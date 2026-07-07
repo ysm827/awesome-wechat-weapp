@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { describeUpstashRedisEnvRequirement, hasUpstashRedis } from "@/lib/upstash";
 
 type CheckStatus = "pass" | "warn" | "fail";
 
@@ -143,14 +144,18 @@ function checkDeploymentEnv() {
     "ADMIN_TOKEN",
     "GITHUB_TOKEN",
     "BLOB_READ_WRITE_TOKEN",
-    "UPSTASH_REDIS_REST_URL",
-    "UPSTASH_REDIS_REST_TOKEN",
     "OPENAI_API_KEY"
   ];
 
   for (const name of optionalEnv) {
     if (process.env[name]) pass(`env:${name}`, `${name} is configured.`);
     else record(`env:${name}`, "warn", `${name} is not configured.`);
+  }
+
+  if (hasUpstashRedis()) {
+    pass("env:UPSTASH_REDIS", "Redis REST integration is configured.");
+  } else {
+    record("env:UPSTASH_REDIS", "warn", `Redis REST integration is not configured. Configure ${describeUpstashRedisEnvRequirement()}.`);
   }
 }
 

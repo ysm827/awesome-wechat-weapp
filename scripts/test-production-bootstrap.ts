@@ -30,6 +30,8 @@ const envKeys = [
   "BLOB_READ_WRITE_TOKEN",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
+  "KV_REST_API_URL",
+  "KV_REST_API_TOKEN",
   "OPENAI_API_KEY",
   "SITE_URL",
   "NEXT_PUBLIC_SITE_URL",
@@ -173,8 +175,8 @@ const strictMvpConfigured = await runBootstrap(["https://miniprogram-radar.examp
   ADMIN_TOKEN: "test-admin-token",
   GITHUB_TOKEN: "test-github-token",
   BLOB_READ_WRITE_TOKEN: "test-blob-token",
-  UPSTASH_REDIS_REST_URL: "https://example.invalid",
-  UPSTASH_REDIS_REST_TOKEN: "test-redis-token"
+  KV_REST_API_URL: "https://example.invalid",
+  KV_REST_API_TOKEN: "test-redis-token"
 });
 assert.equal(strictMvpConfigured.status, 0, strictMvpConfigured.stderr);
 const strictMvpConfiguredOutput = parseOutput(strictMvpConfigured.stdout);

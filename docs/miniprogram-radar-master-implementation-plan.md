@@ -349,7 +349,7 @@ EXPECT_DATABASE=1 npm run deployment:verify -- <production-url>
 任务：
 
 - 创建 Upstash Redis。
-- 配置 `UPSTASH_REDIS_REST_URL` 和 `UPSTASH_REDIS_REST_TOKEN`。
+- 配置 `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`，或使用 Vercel Marketplace 自动注入的 `KV_REST_API_URL`/`KV_REST_API_TOKEN`。
 - Advisor 接入缓存和限流。
 - Cron 接入任务锁。
 
@@ -481,7 +481,7 @@ EXPECT_BLOB=1 VERIFY_BLOB_WRITE=1 npm run integrations:verify
 | Cron 鉴权 | `CRON_SECRET` | Vercel Environment Variables | 未授权 401，授权 dry-run 通过 |
 | Admin 鉴权 | `ADMIN_TOKEN` | Vercel Environment Variables | `/api/admin/readiness` 未授权 401，授权返回 readiness |
 | GitHub 采集 | `GITHUB_TOKEN` | Vercel Environment Variables | `EXPECT_GITHUB=1 npm run integrations:verify` 通过 |
-| Redis | `UPSTASH_REDIS_REST_URL`、`UPSTASH_REDIS_REST_TOKEN` | Upstash Redis | 任务锁、限流、缓存验证通过 |
+| Redis | `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` 或 `KV_REST_API_URL`/`KV_REST_API_TOKEN` | Upstash Redis / Vercel KV env | 任务锁、限流、缓存验证通过 |
 | Blob | `BLOB_READ_WRITE_TOKEN` | Vercel Blob | 写入/删除探针通过 |
 | 真实 AI | `OPENAI_API_KEY` | 用户确认后配置 | AI 输出结构校验和证据校验通过 |
 | CI 验证 | GitHub Variables / Secrets | GitHub Actions | `verify-vercel` workflow 通过 |
@@ -506,6 +506,8 @@ OPENAI_API_KEY
 BLOB_READ_WRITE_TOKEN
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
+KV_REST_API_URL
+KV_REST_API_TOKEN
 OPERATION_LOG_RETENTION_DAYS
 VERCEL_TOKEN
 VERCEL_PROJECT_ID
@@ -626,6 +628,8 @@ RADAR_GITHUB_TOKEN
 BLOB_READ_WRITE_TOKEN
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
+KV_REST_API_URL
+KV_REST_API_TOKEN
 OPENAI_API_KEY
 ```
 

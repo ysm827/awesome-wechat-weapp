@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
+import { describeUpstashRedisEnvRequirement, hasUpstashRedis } from "@/lib/upstash";
 
 type CheckStatus = "pass" | "warn" | "fail";
 
@@ -47,6 +48,15 @@ function checkEnv(name: string, required: boolean) {
   return result(`env:${name}`, required ? "fail" : "warn", `${name} is not configured.`);
 }
 
+function checkRedisEnv(required: boolean) {
+  if (hasUpstashRedis()) return result("env:UPSTASH_REDIS", "pass", "Redis REST integration is configured.");
+  return result(
+    "env:UPSTASH_REDIS",
+    required ? "fail" : "warn",
+    `Redis REST integration is not configured. Configure ${describeUpstashRedisEnvRequirement()}.`
+  );
+}
+
 const checks: CheckResult[] = [];
 
 checks.push(checkFile("vercel.json"));
@@ -92,6 +102,8 @@ const requiredEnvKeys = [
   "BLOB_READ_WRITE_TOKEN",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
+  "KV_REST_API_URL",
+  "KV_REST_API_TOKEN",
   "OPERATION_LOG_RETENTION_DAYS",
   "VERCEL_TOKEN",
   "VERCEL_PROJECT_ID",
@@ -216,6 +228,8 @@ const requiredVerifyWorkflowCommands = [
   "BLOB_READ_WRITE_TOKEN",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
+  "KV_REST_API_URL",
+  "KV_REST_API_TOKEN",
   "VERCEL_TOKEN",
   "VERCEL_PROJECT_ID",
   "VERCEL_ORG_ID"
@@ -548,8 +562,7 @@ checks.push(checkEnv("ADMIN_TOKEN", false));
 checks.push(checkEnv("GITHUB_TOKEN", false));
 checks.push(checkEnv("OPENAI_API_KEY", false));
 checks.push(checkEnv("BLOB_READ_WRITE_TOKEN", false));
-checks.push(checkEnv("UPSTASH_REDIS_REST_URL", false));
-checks.push(checkEnv("UPSTASH_REDIS_REST_TOKEN", false));
+checks.push(checkRedisEnv(false));
 checks.push(checkEnv("OPERATION_LOG_RETENTION_DAYS", false));
 checks.push(checkEnv("VERCEL_TOKEN", false));
 checks.push(checkEnv("VERCEL_PROJECT_ID", false));

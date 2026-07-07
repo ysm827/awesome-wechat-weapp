@@ -1,5 +1,5 @@
 import { del, put } from "@vercel/blob";
-import { upstashCommand } from "@/lib/upstash";
+import { describeUpstashRedisEnvRequirement, hasUpstashRedis, upstashCommand } from "@/lib/upstash";
 
 type CheckStatus = "pass" | "warn" | "fail";
 
@@ -49,8 +49,12 @@ async function verifyBlob() {
 }
 
 async function verifyRedis() {
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    missing("UPSTASH_REDIS", ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"]);
+  if (!hasUpstashRedis()) {
+    record(
+      "integration:upstash_redis",
+      expected("UPSTASH_REDIS") ? "fail" : "warn",
+      `Configure ${describeUpstashRedisEnvRequirement()}.`
+    );
     return;
   }
 

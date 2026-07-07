@@ -18,7 +18,7 @@ assert.match(markdown.stdout, /Tracker report written to/);
 const markdownReport = await readFile(markdownOutputFile, "utf8");
 assert.match(markdownReport, /小程序雷达实施追踪状态/);
 assert.match(markdownReport, /打开问题/);
-assert.match(markdownReport, /待生产配置/);
+assert.match(markdownReport, /进行中/);
 
 const json = await execFileAsync(process.execPath, ["bin/miniprogram-radar.mjs", "tracker", "--json", `--out=${jsonOutputFile}`]);
 assert.match(json.stdout, /Tracker JSON report written to/);
@@ -26,6 +26,7 @@ const payload = JSON.parse(await readFile(jsonOutputFile, "utf8")) as {
   summary?: {
     phases?: number;
     completed?: number;
+    inProgress?: number;
     pendingProduction?: number;
     openIssues?: number;
     risks?: number;
@@ -38,7 +39,7 @@ const payload = JSON.parse(await readFile(jsonOutputFile, "utf8")) as {
 };
 assert.ok((payload.summary?.phases ?? 0) > 0, "tracker json should include phase count");
 assert.ok((payload.summary?.completed ?? 0) > 0, "tracker json should include completed phase count");
-assert.ok((payload.summary?.pendingProduction ?? 0) > 0, "tracker json should expose production pending phases");
+assert.ok((payload.summary?.inProgress ?? 0) > 0, "tracker json should expose in-progress phases");
 assert.ok((payload.summary?.openIssues ?? 0) > 0, "tracker json should expose open issues");
 assert.ok((payload.summary?.risks ?? 0) > 0, "tracker json should include risks");
 assert.ok((payload.summary?.verifications ?? 0) > 0, "tracker json should include verification records");

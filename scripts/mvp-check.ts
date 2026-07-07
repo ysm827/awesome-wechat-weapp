@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { describeUpstashRedisEnvRequirement, hasUpstashRedis } from "@/lib/upstash";
 
 type CheckStatus = "pass" | "warn" | "fail";
 
@@ -55,6 +56,18 @@ function checkEnv(name: string, requiredForStrictMvp = true) {
     `env:${name}`,
     `${name} is not configured.`,
     requiredForStrictMvp && strictMvp
+  );
+}
+
+function checkRedisEnv() {
+  if (hasUpstashRedis()) {
+    pass("env:UPSTASH_REDIS", "Redis REST integration is configured.");
+    return;
+  }
+
+  warnOrFail(
+    "env:UPSTASH_REDIS",
+    `Redis REST integration is not configured. Configure ${describeUpstashRedisEnvRequirement()}.`
   );
 }
 
@@ -189,8 +202,7 @@ checkEnv("CRON_SECRET");
 checkEnv("ADMIN_TOKEN");
 checkEnv("GITHUB_TOKEN");
 checkEnv("BLOB_READ_WRITE_TOKEN");
-checkEnv("UPSTASH_REDIS_REST_URL");
-checkEnv("UPSTASH_REDIS_REST_TOKEN");
+checkRedisEnv();
 checkEnv("OPERATION_LOG_RETENTION_DAYS", false);
 
 if (process.env.OPENAI_API_KEY) {

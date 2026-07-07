@@ -6,6 +6,8 @@ const originalEnv = {
   BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
   CRON_SECRET: process.env.CRON_SECRET,
   DATABASE_URL: process.env.DATABASE_URL,
+  KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN,
+  KV_REST_API_URL: process.env.KV_REST_API_URL,
   NODE_ENV: process.env.NODE_ENV,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL
@@ -25,6 +27,10 @@ try {
   setEnv("CRON_SECRET", "cron-secret");
   setEnv("DATABASE_URL", undefined);
   setEnv("BLOB_READ_WRITE_TOKEN", undefined);
+  setEnv("KV_REST_API_TOKEN", undefined);
+  setEnv("KV_REST_API_URL", undefined);
+  setEnv("UPSTASH_REDIS_REST_TOKEN", undefined);
+  setEnv("UPSTASH_REDIS_REST_URL", undefined);
 
   const unauthorizedEnrich = await enrichCron(new Request("https://example.com/api/cron/enrich"));
   assert.equal(unauthorizedEnrich.status, 401, "enrich cron should reject missing secret");
@@ -106,8 +112,8 @@ try {
   assert.ok((enrichDryRunPayload.result?.attempted ?? 0) > 0, "enrich dry-run should attempt at least one resource");
   assert.equal(enrichDryRunPayload.result?.persisted, false, "enrich dry-run should not persist signals");
 
-  setEnv("UPSTASH_REDIS_REST_TOKEN", "test-redis-token");
-  setEnv("UPSTASH_REDIS_REST_URL", "https://upstash.example.test");
+  setEnv("KV_REST_API_TOKEN", "test-redis-token");
+  setEnv("KV_REST_API_URL", "https://upstash.example.test");
   globalThis.fetch = (async () =>
     new Response(JSON.stringify({ result: null }), {
       status: 200,
@@ -157,6 +163,8 @@ try {
   setEnv("BLOB_READ_WRITE_TOKEN", originalEnv.BLOB_READ_WRITE_TOKEN);
   setEnv("CRON_SECRET", originalEnv.CRON_SECRET);
   setEnv("DATABASE_URL", originalEnv.DATABASE_URL);
+  setEnv("KV_REST_API_TOKEN", originalEnv.KV_REST_API_TOKEN);
+  setEnv("KV_REST_API_URL", originalEnv.KV_REST_API_URL);
   setEnv("NODE_ENV", originalEnv.NODE_ENV);
   setEnv("UPSTASH_REDIS_REST_TOKEN", originalEnv.UPSTASH_REDIS_REST_TOKEN);
   setEnv("UPSTASH_REDIS_REST_URL", originalEnv.UPSTASH_REDIS_REST_URL);

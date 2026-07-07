@@ -11,6 +11,8 @@ const envKeys = [
   "BLOB_READ_WRITE_TOKEN",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
+  "KV_REST_API_URL",
+  "KV_REST_API_TOKEN",
   "SITE_URL",
   "NEXT_PUBLIC_SITE_URL"
 ] as const;
@@ -76,6 +78,14 @@ try {
     siteUrl: true
   });
 
+  setEnv("UPSTASH_REDIS_REST_URL", undefined);
+  setEnv("UPSTASH_REDIS_REST_TOKEN", undefined);
+  setEnv("KV_REST_API_URL", "https://example-kv.upstash.io");
+  setEnv("KV_REST_API_TOKEN", "test-kv-token");
+
+  const configuredWithVercelKv = await getHealthCheck();
+  assert.equal(configuredWithVercelKv.integrations.upstashRedis, true, "health check should accept Vercel KV REST env names");
+
   const response = await GET();
   assert.equal(response.status, 200);
   const payload = (await response.json()) as typeof configured;
@@ -90,8 +100,8 @@ try {
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),
-        cases: 3,
-        assertions: ["static fallback", "snapshot health", "integration flags", "route status"]
+        cases: 4,
+        assertions: ["static fallback", "snapshot health", "integration flags", "vercel kv env aliases", "route status"]
       },
       null,
       2

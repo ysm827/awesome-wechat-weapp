@@ -393,7 +393,7 @@ Radar 状态建议：
 - AI 接入：服务端 Route Handler 调用模型 API，不在前端暴露密钥。
 - 定时任务：Vercel Cron，Hobby 阶段按每天一次设计。
 - 数据采集：GitHub API、npm registry、项目官网和 README。
-- 可选缓存：Upstash Redis 或数据库缓存表，用于 AI 问答结果、热门查询和接口限流。Vercel KV 已转向 Upstash Redis，不建议按新产品能力单独规划。
+- 可选缓存：Upstash Redis 或数据库缓存表，用于 AI 问答结果、热门查询和接口限流。Vercel Marketplace 安装 Upstash Redis 时会注入 `KV_REST_API_URL`/`KV_REST_API_TOKEN`，当前实现兼容这组变量和 Upstash 原生 REST 变量。
 
 这个技术栈适合当前项目的原因：
 
@@ -919,6 +919,8 @@ ADMIN_TOKEN
 BLOB_READ_WRITE_TOKEN
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
+KV_REST_API_URL
+KV_REST_API_TOKEN
 ```
 
 交付物：

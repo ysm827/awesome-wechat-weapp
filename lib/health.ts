@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createDb } from "@/db/client";
 import { resources as databaseResources } from "@/db/schema";
 import { getResources } from "@/lib/resources";
+import { hasUpstashRedis } from "@/lib/upstash";
 
 export interface HealthCheck {
   ok: boolean;
@@ -128,7 +129,7 @@ export async function getHealthCheck(): Promise<HealthCheck> {
       cronSecret: Boolean(process.env.CRON_SECRET),
       adminToken: Boolean(process.env.ADMIN_TOKEN),
       blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
-      upstashRedis: Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
+      upstashRedis: hasUpstashRedis(),
       siteUrl: Boolean(process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL)
     }
   };

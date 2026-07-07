@@ -3,19 +3,45 @@ interface UpstashResponse<T> {
   error?: string;
 }
 
+export const UPSTASH_REDIS_ENV_PAIRS = [
+  {
+    label: "Upstash Redis REST",
+    url: "UPSTASH_REDIS_REST_URL",
+    token: "UPSTASH_REDIS_REST_TOKEN"
+  },
+  {
+    label: "Vercel KV REST",
+    url: "KV_REST_API_URL",
+    token: "KV_REST_API_TOKEN"
+  }
+] as const;
+
+export function describeUpstashRedisEnvRequirement() {
+  return UPSTASH_REDIS_ENV_PAIRS.map((pair) => `${pair.url}/${pair.token}`).join(" or ");
+}
+
+export function getUpstashRedisConfig() {
+  for (const pair of UPSTASH_REDIS_ENV_PAIRS) {
+    const url = process.env[pair.url];
+    const token = process.env[pair.token];
+    if (url && token) return { ...pair, url, token };
+  }
+
+  return null;
+}
+
 export function hasUpstashRedis() {
-  return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  return Boolean(getUpstashRedisConfig());
 }
 
 export async function upstashCommand<T>(command: Array<string | number>): Promise<T | null> {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
+  const config = getUpstashRedisConfig();
+  if (!config) return null;
 
-  const response = await fetch(url, {
+  const response = await fetch(config.url, {
     method: "POST",
     headers: {
-      authorization: `Bearer ${token}`,
+      authorization: `Bearer ${config.token}`,
       "content-type": "application/json"
     },
     body: JSON.stringify(command)

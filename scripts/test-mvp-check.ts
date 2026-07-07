@@ -30,6 +30,8 @@ const envKeys = [
   "BLOB_READ_WRITE_TOKEN",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
+  "KV_REST_API_URL",
+  "KV_REST_API_TOKEN",
   "OPENAI_API_KEY"
 ];
 
@@ -121,11 +123,28 @@ assert.equal(strictSiteUrlConfigured.status, 0, strictSiteUrlConfigured.stderr);
 const strictSiteUrlConfiguredOutput = parseOutput(strictSiteUrlConfigured.stdout);
 assert.equal(strictSiteUrlConfiguredOutput.checks?.find((check) => check.name === "env:SITE_URL")?.status, "pass");
 
+const strictMvpWithVercelKv = await runMvpCheck(
+  {
+    EXPECT_MVP: "1",
+    DATABASE_URL: "postgres://example.invalid/miniprogram_radar",
+    CRON_SECRET: "test-cron-secret",
+    ADMIN_TOKEN: "test-admin-token",
+    GITHUB_TOKEN: "test-github-token",
+    BLOB_READ_WRITE_TOKEN: "test-blob-token",
+    KV_REST_API_URL: "https://example.invalid",
+    KV_REST_API_TOKEN: "test-redis-token"
+  },
+  ["https://miniprogram-radar.example.com"]
+);
+assert.equal(strictMvpWithVercelKv.status, 0, strictMvpWithVercelKv.stderr);
+const strictMvpWithVercelKvOutput = parseOutput(strictMvpWithVercelKv.stdout);
+assert.equal(strictMvpWithVercelKvOutput.checks?.find((check) => check.name === "env:UPSTASH_REDIS")?.status, "pass");
+
 console.log(
   JSON.stringify(
     {
       checkedAt: new Date().toISOString(),
-      cases: 5,
+      cases: 6,
       assertions: [
         "baseline external warnings",
         "product module checks",
@@ -134,7 +153,8 @@ console.log(
         "strict MVP external failures",
         "strict OpenAI expectation",
         "strict site URL expectation",
-        "strict site URL configured"
+        "strict site URL configured",
+        "strict MVP accepts Vercel KV Redis env aliases"
       ]
     },
     null,

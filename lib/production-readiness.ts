@@ -81,7 +81,7 @@ export function buildProductionReadiness(health: HealthCheck): ProductionReadine
       title: "Redis 缓存和任务锁",
       status: health.integrations.upstashRedis ? "ready" : "missing",
       detail: health.integrations.upstashRedis ? "Upstash Redis 已配置。" : "缺少 Upstash Redis，Advisor 缓存和 Cron 分布式锁只能降级。",
-      action: "配置 UPSTASH_REDIS_REST_URL 和 UPSTASH_REDIS_REST_TOKEN。",
+      action: "配置 UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN，或使用 Vercel Marketplace 自动注入的 KV_REST_API_URL/KV_REST_API_TOKEN。",
       command: "EXPECT_UPSTASH_REDIS=1 npm run integrations:verify"
     }),
     item({

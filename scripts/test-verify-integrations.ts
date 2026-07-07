@@ -24,6 +24,8 @@ async function runVerifyIntegrations(extraEnv: Record<string, string | undefined
         BLOB_READ_WRITE_TOKEN: undefined,
         UPSTASH_REDIS_REST_URL: undefined,
         UPSTASH_REDIS_REST_TOKEN: undefined,
+        KV_REST_API_URL: undefined,
+        KV_REST_API_TOKEN: undefined,
         ...extraEnv
       },
       stdio: ["ignore", "pipe", "pipe"]

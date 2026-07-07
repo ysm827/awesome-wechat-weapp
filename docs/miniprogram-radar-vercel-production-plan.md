@@ -286,8 +286,7 @@ VERIFY_CRON_SECRET=<CRON_SECRET> npm run deployment:verify -- <production-url>
 任务：
 
 - 创建 Upstash Redis。
-- 配置 `UPSTASH_REDIS_REST_URL`。
-- 配置 `UPSTASH_REDIS_REST_TOKEN`。
+- 配置 `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`，或使用 Vercel Marketplace 自动注入的 `KV_REST_API_URL`/`KV_REST_API_TOKEN`。
 - 验证 Advisor 缓存和限流。
 - 验证 Cron 锁，避免任务重叠。
 
@@ -404,6 +403,8 @@ OPENAI_API_KEY
 BLOB_READ_WRITE_TOKEN
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
+KV_REST_API_URL
+KV_REST_API_TOKEN
 OPERATION_LOG_RETENTION_DAYS
 VERCEL_TOKEN
 VERCEL_PROJECT_ID
@@ -424,6 +425,8 @@ VERCEL_ORG_ID
 | `BLOB_READ_WRITE_TOKEN` | 可选 | 启用 Blob 上传 |
 | `UPSTASH_REDIS_REST_URL` | 可选 | Redis REST 地址 |
 | `UPSTASH_REDIS_REST_TOKEN` | 可选 | Redis REST Token |
+| `KV_REST_API_URL` | 可选 | Vercel Marketplace Upstash Redis REST 地址别名 |
+| `KV_REST_API_TOKEN` | 可选 | Vercel Marketplace Upstash Redis REST Token 别名 |
 | `OPERATION_LOG_RETENTION_DAYS` | 可选 | 运行日志保留天数，默认 30 |
 | `VERCEL_TOKEN` | 可选 | 非交互 Vercel CLI 和 CI preflight |
 | `VERCEL_PROJECT_ID` | 可选 | CI 中识别 Vercel 项目 |
@@ -540,6 +543,8 @@ RADAR_GITHUB_TOKEN
 BLOB_READ_WRITE_TOKEN
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
+KV_REST_API_URL
+KV_REST_API_TOKEN
 ```
 
 收口策略：

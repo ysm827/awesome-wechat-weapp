@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { describeUpstashRedisEnvRequirement, hasUpstashRedis } from "@/lib/upstash";
 
 type StepStatus = "ready" | "skipped" | "pass" | "fail";
 
@@ -50,9 +51,7 @@ const strictMvpEnvKeys = [
   "CRON_SECRET",
   "ADMIN_TOKEN",
   "GITHUB_TOKEN",
-  "BLOB_READ_WRITE_TOKEN",
-  "UPSTASH_REDIS_REST_URL",
-  "UPSTASH_REDIS_REST_TOKEN"
+  "BLOB_READ_WRITE_TOKEN"
 ];
 
 function addStep(name: string, command: string[], skipped: boolean, detail: string) {
@@ -70,6 +69,10 @@ function hasEnv(name: string) {
 
 function hasSiteUrlEnv() {
   return hasEnv("SITE_URL") || hasEnv("NEXT_PUBLIC_SITE_URL");
+}
+
+function hasRedisEnv() {
+  return hasUpstashRedis();
 }
 
 function hasVercelProjectLink() {
@@ -144,8 +147,9 @@ if (!execute) {
     ...(expectDatabase && !hasEnv("DATABASE_URL") ? ["DATABASE_URL is required by expect-database."] : []),
     ...(expectGitHub && !hasEnv("GITHUB_TOKEN") ? ["GITHUB_TOKEN is required by expect-github."] : []),
     ...(expectBlob && !hasEnv("BLOB_READ_WRITE_TOKEN") ? ["BLOB_READ_WRITE_TOKEN is required by expect-blob."] : []),
-    ...(expectRedis && (!hasEnv("UPSTASH_REDIS_REST_URL") || !hasEnv("UPSTASH_REDIS_REST_TOKEN"))
-      ? ["UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required by expect-redis."]
+    ...(expectMvp && !hasRedisEnv() ? [`${describeUpstashRedisEnvRequirement()} is required by expect-mvp.`] : []),
+    ...(expectRedis && !hasRedisEnv()
+      ? [`${describeUpstashRedisEnvRequirement()} is required by expect-redis.`]
       : []),
     ...(expectSiteUrl && !hasSiteUrlEnv() ? ["SITE_URL or NEXT_PUBLIC_SITE_URL is required by expect-site-url."] : []),
     ...(expectVercelDeploy && !hasEnv("VERCEL_TOKEN") ? ["VERCEL_TOKEN is required by expect-vercel-deploy."] : []),
