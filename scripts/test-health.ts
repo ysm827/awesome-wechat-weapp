@@ -6,6 +6,7 @@ const envKeys = [
   "DATABASE_URL",
   "OPENAI_API_KEY",
   "OPENAI_API_URL",
+  "OPENAI_API_STYLE",
   "OPENAI_MODEL",
   "OPENAI_FALLBACK_MODEL",
   "GITHUB_TOKEN",
@@ -55,6 +56,7 @@ try {
       configured: false,
       apiKeyConfigured: false,
       apiUrl: "https://api.openai.com/v1",
+      apiStyle: "chat",
       model: "nvidia/nemotron-3-ultra-550b-a55b:free",
       fallbackModel: "qwen/qwen3-next-80b-a3b-instruct:free",
       provider: "openai"
@@ -69,6 +71,7 @@ try {
 
   setEnv("OPENAI_API_KEY", "test-openai-key");
   setEnv("OPENAI_API_URL", "https://openrouter.ai/api/v1");
+  setEnv("OPENAI_API_STYLE", "responses");
   setEnv("OPENAI_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free");
   setEnv("OPENAI_FALLBACK_MODEL", "qwen/qwen3-next-80b-a3b-instruct:free");
   setEnv("GITHUB_TOKEN", "test-github-token");
@@ -88,6 +91,7 @@ try {
       configured: true,
       apiKeyConfigured: true,
       apiUrl: "https://openrouter.ai/api/v1",
+      apiStyle: "responses",
       model: "nvidia/nemotron-3-ultra-550b-a55b:free",
       fallbackModel: "qwen/qwen3-next-80b-a3b-instruct:free",
       provider: "openrouter"

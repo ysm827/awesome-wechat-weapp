@@ -4,11 +4,13 @@ export const DEFAULT_OPENAI_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 export const DEFAULT_OPENAI_FALLBACK_MODEL = "qwen/qwen3-next-80b-a3b-instruct:free";
 
 export type AiProvider = "openai" | "openrouter" | "custom";
+export type AiApiStyle = "chat" | "responses";
 
 export interface AiConfig {
   configured: boolean;
   apiKeyConfigured: boolean;
   apiUrl: string;
+  apiStyle: AiApiStyle;
   model: string;
   fallbackModel: string;
   provider: AiProvider;
@@ -26,8 +28,13 @@ function providerForApiUrl(apiUrl: string): AiProvider {
   return "custom";
 }
 
+function normalizeApiStyle(value: string | undefined): AiApiStyle {
+  return value?.trim().toLowerCase() === "responses" ? "responses" : "chat";
+}
+
 export function getAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
   const apiUrl = normalizeApiUrl(env.OPENAI_API_URL);
+  const apiStyle = normalizeApiStyle(env.OPENAI_API_STYLE);
   const apiKeyConfigured = Boolean(env.OPENAI_API_KEY?.trim());
   const model = env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_MODEL;
   const fallbackModel = env.OPENAI_FALLBACK_MODEL?.trim() || DEFAULT_OPENAI_FALLBACK_MODEL;
@@ -36,6 +43,7 @@ export function getAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
     configured: apiKeyConfigured,
     apiKeyConfigured,
     apiUrl,
+    apiStyle,
     model,
     fallbackModel,
     provider: providerForApiUrl(apiUrl)

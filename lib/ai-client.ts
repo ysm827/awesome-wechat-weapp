@@ -11,6 +11,9 @@ export interface AiJsonCompletionResult<T> {
 
 interface ChatCompletionChoice {
   finish_reason?: unknown;
+  delta?: {
+    content?: unknown;
+  };
   message?: {
     content?: unknown;
   };
@@ -18,6 +21,12 @@ interface ChatCompletionChoice {
 
 interface ChatCompletionResponse {
   choices?: ChatCompletionChoice[];
+  error?: unknown;
+}
+
+interface ResponsesApiResponse {
+  output_text?: unknown;
+  output?: unknown;
   error?: unknown;
 }
 
@@ -34,6 +43,10 @@ const OPENROUTER_JSON_RESPONSE_FORMAT_MODELS = new Set([
 
 function completionUrl(config: AiConfig) {
   return `${config.apiUrl}/chat/completions`;
+}
+
+function responsesUrl(config: AiConfig) {
+  return `${config.apiUrl}/responses`;
 }
 
 function openRouterHeaders(config: AiConfig): Record<string, string> {
@@ -55,11 +68,15 @@ function responseFormatForModel(config: AiConfig, model: string) {
 }
 
 function tokenLimitForModel(config: AiConfig, model: string) {
-  if (config.provider !== "openrouter" && /^gpt-5(?:\.|-|$)/i.test(model)) {
+  if (config.provider === "openai" && /^gpt-5(?:\.|-|$)/i.test(model)) {
     return { max_completion_tokens: DEFAULT_AI_MAX_TOKENS };
   }
 
   return { max_tokens: DEFAULT_AI_MAX_TOKENS };
+}
+
+function shouldStreamChatCompletion(config: AiConfig) {
+  return config.provider === "custom";
 }
 
 async function fetchTextWithTimeout(url: string, init: RequestInit, timeoutMs: number) {
@@ -143,6 +160,126 @@ function extractMessageContentText(content: unknown) {
   return "";
 }
 
+function extractResponsesOutputText(payload: ResponsesApiResponse | null) {
+  if (!payload || typeof payload !== "object") return "";
+  if (typeof payload.output_text === "string") return payload.output_text;
+  if (!Array.isArray(payload.output)) return "";
+
+  return payload.output
+    .flatMap((item) => {
+      if (typeof item === "string") return [item];
+      if (typeof item !== "object" || item === null) return [];
+
+      const record = item as Record<string, unknown>;
+      if (typeof record.text === "string") return [record.text];
+      if (typeof record.content === "string") return [record.content];
+      if (Array.isArray(record.content)) return record.content.map(contentPartText);
+
+      return [];
+    })
+    .join("");
+}
+
+function parseSseDataRecords(text: string) {
+  const records: unknown[] = [];
+
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) continue;
+
+    const data = trimmed.slice("data:".length).trim();
+    if (!data || data === "[DONE]") continue;
+
+    try {
+      records.push(JSON.parse(data) as unknown);
+    } catch {
+      // Ignore non-JSON keep-alive or provider-specific SSE data lines.
+    }
+  }
+
+  return records;
+}
+
+function stringField(record: Record<string, unknown>, name: string) {
+  const value = record[name];
+  return typeof value === "string" ? value : "";
+}
+
+function responsesInputForMessages(messages: AiPromptMessage[]) {
+  const instructions = messages
+    .filter((message) => message.role === "system")
+    .map((message) => message.content.trim())
+    .filter(Boolean)
+    .join("\n\n");
+  const input = messages
+    .filter((message) => message.role !== "system")
+    .map((message) => ({
+      role: message.role,
+      content: [
+        {
+          type: "input_text",
+          text: message.content
+        }
+      ]
+    }));
+
+  return {
+    ...(instructions ? { instructions } : {}),
+    input: input.length > 0 ? input : messages.map((message) => ({ role: message.role, content: message.content }))
+  };
+}
+
+function extractResponsesPayloadText(text: string) {
+  const payload = parseCompletionPayload(text) as ResponsesApiResponse | null;
+  const jsonContent = extractResponsesOutputText(payload);
+  if (jsonContent.trim().length > 0) return { content: jsonContent, payload };
+
+  const sseRecords = parseSseDataRecords(text);
+  const completedContent = sseRecords
+    .map((item) => {
+      if (typeof item !== "object" || item === null) return "";
+      const record = item as Record<string, unknown>;
+      const response = record.response;
+      return extractResponsesOutputText((response && typeof response === "object" ? response : record) as ResponsesApiResponse);
+    })
+    .filter((value) => value.trim().length > 0);
+  if (completedContent.length > 0) return { content: completedContent.at(-1) ?? "", payload };
+
+  const deltaContent = sseRecords
+    .map((item) => {
+      if (typeof item !== "object" || item === null) return "";
+      const record = item as Record<string, unknown>;
+      return stringField(record, "delta") || stringField(record, "text") || stringField(record, "output_text");
+    })
+    .join("");
+
+  return { content: deltaContent, payload };
+}
+
+function extractChatChoiceText(choice: ChatCompletionChoice | undefined) {
+  const messageContent = extractMessageContentText(choice?.message?.content);
+  if (messageContent.trim().length > 0) return messageContent;
+  return extractMessageContentText(choice?.delta?.content);
+}
+
+function extractChatPayloadText(text: string) {
+  const payload = parseCompletionPayload(text);
+  const jsonContent = extractChatChoiceText(payload?.choices?.[0]);
+  if (jsonContent.trim().length > 0) return { content: jsonContent, payload };
+
+  const sseRecords = parseSseDataRecords(text);
+  const sseContent = sseRecords
+    .flatMap((item) => {
+      if (typeof item !== "object" || item === null) return [];
+      const record = item as ChatCompletionResponse;
+      if (!Array.isArray(record.choices)) return [];
+      return record.choices.map(extractChatChoiceText);
+    })
+    .join("");
+
+  return { content: sseContent, payload };
+}
+
 function describeEmptyChoice(choice: ChatCompletionChoice | undefined) {
   const content = choice?.message?.content;
   const contentType = Array.isArray(content) ? "array" : content === null ? "null" : typeof content;
@@ -158,7 +295,65 @@ function describeCompletionPayload(payload: ChatCompletionResponse | null) {
   return `payloadKeys=${payloadKeys}; choices=${choiceCount}`;
 }
 
+function describeResponsesPayload(payload: ResponsesApiResponse | null) {
+  if (!payload || typeof payload !== "object") return "payloadKeys=none; output=none";
+  const payloadKeys = Object.keys(payload).sort().join(",") || "none";
+  const outputCount = Array.isArray(payload.output) ? payload.output.length : "none";
+  const outputTextType = payload.output_text === null ? "null" : typeof payload.output_text;
+  return `payloadKeys=${payloadKeys}; output=${outputCount}; outputTextType=${outputTextType}`;
+}
+
 async function requestChatCompletion<T>({
+  config,
+  model,
+  messages,
+  timeoutMs
+}: {
+  config: AiConfig;
+  model: string;
+  messages: AiPromptMessage[];
+  timeoutMs: number;
+}) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
+  const stream = shouldStreamChatCompletion(config);
+
+  const { response, text } = await fetchTextWithTimeout(
+    completionUrl(config),
+    {
+      method: "POST",
+      headers: {
+        ...(stream ? { accept: "text/event-stream" } : {}),
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+        ...openRouterHeaders(config)
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.2,
+        stream,
+        ...tokenLimitForModel(config, model),
+        ...responseFormatForModel(config, model)
+      })
+    },
+    timeoutMs
+  );
+
+  const { content, payload } = extractChatPayloadText(text);
+  if (!response.ok) {
+    const providerError = stringifyProviderError(payload?.error);
+    throw new Error(providerError ? `AI provider rejected ${model}: ${providerError}` : `AI provider rejected ${model} with HTTP ${response.status}.`);
+  }
+
+  if (content.trim().length === 0) {
+    throw new Error(`AI provider returned an empty response for ${model}. ${describeEmptyChoice(payload?.choices?.[0])}; ${describeCompletionPayload(payload)}`);
+  }
+
+  return parseJsonObject<T>(content);
+}
+
+async function requestResponsesCompletion<T>({
   config,
   model,
   messages,
@@ -173,36 +368,35 @@ async function requestChatCompletion<T>({
   if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
 
   const { response, text } = await fetchTextWithTimeout(
-    completionUrl(config),
+    responsesUrl(config),
     {
       method: "POST",
       headers: {
+        accept: "text/event-stream",
         "content-type": "application/json",
+        "openai-beta": "responses=v1",
         authorization: `Bearer ${apiKey}`,
         ...openRouterHeaders(config)
       },
       body: JSON.stringify({
         model,
-        messages,
-        temperature: 0.2,
-        stream: false,
-        ...tokenLimitForModel(config, model),
-        ...responseFormatForModel(config, model)
+        ...responsesInputForMessages(messages),
+        max_output_tokens: DEFAULT_AI_MAX_TOKENS,
+        store: false,
+        stream: true
       })
     },
     timeoutMs
   );
 
-  const payload = parseCompletionPayload(text);
+  const { content, payload } = extractResponsesPayloadText(text);
   if (!response.ok) {
     const providerError = stringifyProviderError(payload?.error);
     throw new Error(providerError ? `AI provider rejected ${model}: ${providerError}` : `AI provider rejected ${model} with HTTP ${response.status}.`);
   }
 
-  const choice = payload?.choices?.[0];
-  const content = extractMessageContentText(choice?.message?.content);
   if (content.trim().length === 0) {
-    throw new Error(`AI provider returned an empty response for ${model}. ${describeEmptyChoice(choice)}; ${describeCompletionPayload(payload)}`);
+    throw new Error(`AI provider returned an empty response for ${model}. ${describeResponsesPayload(payload)}`);
   }
 
   return parseJsonObject<T>(content);
@@ -231,7 +425,7 @@ export async function createAiJsonCompletion<T>({
 
   for (const model of models) {
     try {
-      const value = await requestChatCompletion<T>({
+      const value = await (config.apiStyle === "responses" ? requestResponsesCompletion<T> : requestChatCompletion<T>)({
         config,
         model,
         messages,
