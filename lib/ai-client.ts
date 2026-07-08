@@ -114,6 +114,24 @@ function parseCompletionPayload(text: string) {
   }
 }
 
+function contentPartText(part: unknown) {
+  if (typeof part === "string") return part;
+  if (typeof part !== "object" || part === null) return "";
+
+  const record = part as Record<string, unknown>;
+  if (typeof record.text === "string") return record.text;
+  if (typeof record.content === "string") return record.content;
+
+  return "";
+}
+
+function extractMessageContentText(content: unknown) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map(contentPartText).join("");
+  if (typeof content === "object" && content !== null) return contentPartText(content);
+  return "";
+}
+
 async function requestChatCompletion<T>({
   config,
   model,
@@ -155,8 +173,8 @@ async function requestChatCompletion<T>({
     throw new Error(providerError ? `AI provider rejected ${model}: ${providerError}` : `AI provider rejected ${model} with HTTP ${response.status}.`);
   }
 
-  const content = payload?.choices?.[0]?.message?.content;
-  if (typeof content !== "string" || content.trim().length === 0) {
+  const content = extractMessageContentText(payload?.choices?.[0]?.message?.content);
+  if (content.trim().length === 0) {
     throw new Error(`AI provider returned an empty response for ${model}.`);
   }
 

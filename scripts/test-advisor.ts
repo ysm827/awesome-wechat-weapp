@@ -252,11 +252,72 @@ try {
   assert.deepEqual(requestedModels, ["test-primary-model", "qwen/qwen3-next-80b-a3b-instruct:free"], "advisor route should try primary then fallback model");
   globalThis.fetch = originalFetch;
 
+  setEnv("OPENAI_API_URL", "https://agentrouter.org/v1");
+  setEnv("OPENAI_MODEL", "gpt-5.5");
+  setEnv("OPENAI_FALLBACK_MODEL", "gpt-5.5");
+
+  const agentRouterAnswer = {
+    ...draftAiAnswer,
+    recommendation: `AgentRouter 建议：${draftAiAnswer.recommendation}`
+  };
+  let agentRouterRequestCount = 0;
+  globalThis.fetch = async (input: string | URL | Request, init?: RequestInit) => {
+    agentRouterRequestCount += 1;
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    assert.equal(url, "https://agentrouter.org/v1/chat/completions");
+    const body = JSON.parse(String(init?.body)) as { model?: string; response_format?: unknown };
+    assert.equal(body.model, "gpt-5.5");
+    assert.equal(body.response_format, undefined);
+
+    return new Response(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(agentRouterAnswer)
+                }
+              ]
+            }
+          }
+        ]
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      }
+    );
+  };
+
+  const agentRouterRouteResponse = await advisorRoute(
+    new Request("https://example.com/api/advisor", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": "203.0.113.53"
+      },
+      body: JSON.stringify({ question: questions[0].question })
+    })
+  );
+  assert.equal(agentRouterRouteResponse.status, 200, "advisor route should accept segmented content from OpenAI-compatible endpoints");
+  assert.equal(agentRouterRouteResponse.headers.get("x-advisor-source"), "ai");
+  assert.equal(agentRouterRouteResponse.headers.get("x-advisor-model"), "gpt-5.5");
+  const agentRouterRouteAnswer = (await agentRouterRouteResponse.json()) as ReturnType<typeof createAdvisorAnswer> & { source?: string; model?: string | null };
+  const agentRouterRouteValidation = validateAdvisorAnswer(agentRouterRouteAnswer, resources);
+  assert.equal(agentRouterRouteValidation.ok, true, agentRouterRouteValidation.errors.join("\n"));
+  assert.equal(agentRouterRouteAnswer.source, "ai");
+  assert.equal(agentRouterRouteAnswer.model, "gpt-5.5");
+  assert.match(agentRouterRouteAnswer.recommendation, /^AgentRouter 建议：/);
+  assert.equal(agentRouterRequestCount, 1, "advisor route should deduplicate identical primary and fallback models");
+  globalThis.fetch = originalFetch;
+
   console.log(
     JSON.stringify(
       {
         checkedAt: new Date().toISOString(),
-        cases: results.length + 3,
+        cases: results.length + 4,
         assertions: [
           "advisor generation",
           "advisor decision structure",
@@ -264,7 +325,8 @@ try {
           "advisor evidence validation",
           "advisor route validation",
           "advisor AI route validation",
-          "advisor AI fallback model"
+          "advisor AI fallback model",
+          "advisor segmented AI content"
         ],
         results
       },
