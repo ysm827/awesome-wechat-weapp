@@ -151,6 +151,13 @@ function describeEmptyChoice(choice: ChatCompletionChoice | undefined) {
   return `contentType=${contentType}; messageKeys=${messageKeys}; finishReason=${finishReason}`;
 }
 
+function describeCompletionPayload(payload: ChatCompletionResponse | null) {
+  if (!payload || typeof payload !== "object") return "payloadKeys=none; choices=none";
+  const payloadKeys = Object.keys(payload).sort().join(",") || "none";
+  const choiceCount = Array.isArray(payload.choices) ? payload.choices.length : "none";
+  return `payloadKeys=${payloadKeys}; choices=${choiceCount}`;
+}
+
 async function requestChatCompletion<T>({
   config,
   model,
@@ -195,7 +202,7 @@ async function requestChatCompletion<T>({
   const choice = payload?.choices?.[0];
   const content = extractMessageContentText(choice?.message?.content);
   if (content.trim().length === 0) {
-    throw new Error(`AI provider returned an empty response for ${model}. ${describeEmptyChoice(choice)}`);
+    throw new Error(`AI provider returned an empty response for ${model}. ${describeEmptyChoice(choice)}; ${describeCompletionPayload(payload)}`);
   }
 
   return parseJsonObject<T>(content);
