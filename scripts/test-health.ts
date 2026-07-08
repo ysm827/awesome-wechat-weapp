@@ -55,9 +55,22 @@ try {
       configured: false,
       apiKeyConfigured: false,
       apiUrl: "https://api.openai.com/v1",
-      model: "nvidia/nemotron-3-ultra-550b-a55b:free",
-      fallbackModel: "qwen/qwen3-next-80b-a3b-instruct:free",
+      model: "openai/gpt-oss-20b:free",
+      fallbackModel: "nvidia/nemotron-nano-9b-v2:free",
       provider: "openai"
+    },
+    aiRuntime: {
+      configured: false,
+      provider: "openai",
+      apiUrl: "https://api.openai.com/v1",
+      primaryModel: "openai/gpt-oss-20b:free",
+      fallbackModel: "nvidia/nemotron-nano-9b-v2:free",
+      lastUpdatedAt: null,
+      lastSource: "not_configured",
+      lastModel: null,
+      fallbackUsed: false,
+      fallbackReason: null,
+      lastError: null
     },
     github: false,
     cronSecret: false,
@@ -69,8 +82,8 @@ try {
 
   setEnv("OPENAI_API_KEY", "test-openai-key");
   setEnv("OPENAI_API_URL", "https://openrouter.ai/api/v1");
-  setEnv("OPENAI_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free");
-  setEnv("OPENAI_FALLBACK_MODEL", "qwen/qwen3-next-80b-a3b-instruct:free");
+  setEnv("OPENAI_MODEL", "openai/gpt-oss-20b:free");
+  setEnv("OPENAI_FALLBACK_MODEL", "nvidia/nemotron-nano-9b-v2:free");
   setEnv("GITHUB_TOKEN", "test-github-token");
   setEnv("CRON_SECRET", "test-cron-secret");
   setEnv("ADMIN_TOKEN", "test-admin-token");
@@ -88,9 +101,22 @@ try {
       configured: true,
       apiKeyConfigured: true,
       apiUrl: "https://openrouter.ai/api/v1",
-      model: "nvidia/nemotron-3-ultra-550b-a55b:free",
-      fallbackModel: "qwen/qwen3-next-80b-a3b-instruct:free",
+      model: "openai/gpt-oss-20b:free",
+      fallbackModel: "nvidia/nemotron-nano-9b-v2:free",
       provider: "openrouter"
+    },
+    aiRuntime: {
+      configured: true,
+      provider: "openrouter",
+      apiUrl: "https://openrouter.ai/api/v1",
+      primaryModel: "openai/gpt-oss-20b:free",
+      fallbackModel: "nvidia/nemotron-nano-9b-v2:free",
+      lastUpdatedAt: null,
+      lastSource: "not_configured",
+      lastModel: null,
+      fallbackUsed: false,
+      fallbackReason: null,
+      lastError: null
     },
     github: true,
     cronSecret: true,

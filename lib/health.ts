@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createDb } from "@/db/client";
 import { resources as databaseResources } from "@/db/schema";
 import { getAiConfig, type AiConfig } from "@/lib/ai-config";
+import { getAiRuntimeStatus, type AiRuntimeStatus } from "@/lib/ai-runtime-status";
 import { getResources } from "@/lib/resources";
 import { hasUpstashRedis } from "@/lib/upstash";
 
@@ -37,6 +38,7 @@ export interface HealthCheck {
   };
   integrations: {
     ai: AiConfig;
+    aiRuntime: AiRuntimeStatus;
     openai: boolean;
     github: boolean;
     cronSecret: boolean;
@@ -128,6 +130,7 @@ export async function getHealthCheck(): Promise<HealthCheck> {
     database,
     integrations: {
       ai,
+      aiRuntime: getAiRuntimeStatus(),
       openai: ai.configured,
       github: Boolean(process.env.GITHUB_TOKEN),
       cronSecret: Boolean(process.env.CRON_SECRET),

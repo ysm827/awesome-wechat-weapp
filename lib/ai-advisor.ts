@@ -1,7 +1,8 @@
 import { createAiJsonCompletion } from "@/lib/ai-client";
-import { createAdvisorAnswer, type AdvisorAnswer } from "@/lib/advisor";
+import { createAdvisorAnswer, type AdvisorAnswer, type AdvisorDecisionSummary } from "@/lib/advisor";
 import { validateAdvisorAnswer } from "@/lib/ai-output-validation";
 import { getAiConfig } from "@/lib/ai-config";
+import { recordAiRuntimeStatus } from "@/lib/ai-runtime-status";
 import type { AiPromptMessage } from "@/lib/ai-prompts";
 import type { RadarResource } from "@/lib/resources";
 
@@ -16,6 +17,7 @@ export interface AdvisorGenerationResult {
 
 interface AdvisorNarrative {
   recommendation: string;
+  decisionSummary: AdvisorDecisionSummary;
   fitConditions: string[];
   reasons: string[];
   risks: string[];
@@ -30,8 +32,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isAdvisorDecisionSummary(value: unknown): value is AdvisorDecisionSummary {
+  return (
+    isRecord(value) &&
+    typeof value.recommendedFor === "string" &&
+    isStringArray(value.notRecommendedFor) &&
+    ["low", "medium", "high", "unknown"].includes(String(value.migrationCost)) &&
+    isStringArray(value.nextSteps)
+  );
+}
+
 function isAdvisorNarrative(value: unknown): value is AdvisorNarrative {
-  return isRecord(value) && typeof value.recommendation === "string" && isStringArray(value.fitConditions) && isStringArray(value.reasons) && isStringArray(value.risks) && isStringArray(value.validationChecklist);
+  return (
+    isRecord(value) &&
+    typeof value.recommendation === "string" &&
+    isAdvisorDecisionSummary(value.decisionSummary) &&
+    isStringArray(value.fitConditions) &&
+    isStringArray(value.reasons) &&
+    isStringArray(value.risks) &&
+    isStringArray(value.validationChecklist)
+  );
 }
 
 function cleanItems(items: string[], limit: number) {
@@ -79,6 +99,7 @@ function buildAdvisorNarrativeMessages(question: string, draftAnswer: AdvisorAns
           question,
           draftAnswer: {
             recommendation: draftAnswer.recommendation,
+            decisionSummary: draftAnswer.decisionSummary,
             fitConditions: draftAnswer.fitConditions,
             reasons: draftAnswer.reasons,
             risks: draftAnswer.risks,
@@ -90,9 +111,20 @@ function buildAdvisorNarrativeMessages(question: string, draftAnswer: AdvisorAns
           outputSchema: {
             type: "object",
             additionalProperties: false,
-            required: ["recommendation", "fitConditions", "reasons", "risks", "validationChecklist"],
+            required: ["recommendation", "decisionSummary", "fitConditions", "reasons", "risks", "validationChecklist"],
             properties: {
               recommendation: { type: "string" },
+              decisionSummary: {
+                type: "object",
+                additionalProperties: false,
+                required: ["recommendedFor", "notRecommendedFor", "migrationCost", "nextSteps"],
+                properties: {
+                  recommendedFor: { type: "string" },
+                  notRecommendedFor: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 4 },
+                  migrationCost: { type: "string", enum: ["low", "medium", "high", "unknown"] },
+                  nextSteps: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 4 }
+                }
+              },
               fitConditions: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 5 },
               reasons: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 5 },
               risks: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 5 },
@@ -101,6 +133,7 @@ function buildAdvisorNarrativeMessages(question: string, draftAnswer: AdvisorAns
           },
           constraints: [
             "recommendation 必须直接回答用户问题。",
+            "decisionSummary 必须保留 recommendedFor、notRecommendedFor、migrationCost、nextSteps 四类决策信息。",
             "fitConditions、reasons、risks、validationChecklist 必须只基于 draftAnswer 和 resources。",
             "不要输出 alternatives 或 evidence 字段；这些字段由系统保留原值。",
             "如果证据不足，写入需要人工验证的内容。"
@@ -117,6 +150,12 @@ function mergeNarrative(draftAnswer: AdvisorAnswer, narrative: AdvisorNarrative)
   return {
     ...draftAnswer,
     recommendation: narrative.recommendation.trim() || draftAnswer.recommendation,
+    decisionSummary: {
+      recommendedFor: narrative.decisionSummary.recommendedFor.trim() || draftAnswer.decisionSummary.recommendedFor,
+      notRecommendedFor: cleanItems(narrative.decisionSummary.notRecommendedFor, 4),
+      migrationCost: narrative.decisionSummary.migrationCost,
+      nextSteps: cleanItems(narrative.decisionSummary.nextSteps, 4)
+    },
     fitConditions: cleanItems(narrative.fitConditions, 5),
     reasons: cleanItems(narrative.reasons, 5),
     risks: cleanItems(narrative.risks, 5),
@@ -139,7 +178,10 @@ export async function createAdvisorAnswerWithAi(question: string, resources: Rad
   const draftAnswer = createAdvisorAnswer(question, resources);
   const config = getAiConfig();
 
-  if (!config.configured) return rulesResult(draftAnswer, true);
+  if (!config.configured) {
+    recordAiRuntimeStatus({ source: "not_configured" });
+    return rulesResult(draftAnswer, true);
+  }
 
   const completion = await createAiJsonCompletion<AdvisorNarrative>({
     messages: buildAdvisorNarrativeMessages(question, draftAnswer, resources)
@@ -152,6 +194,12 @@ export async function createAdvisorAnswerWithAi(question: string, resources: Rad
       fallbackModel: config.fallbackModel,
       error: completion.error
     });
+    recordAiRuntimeStatus({
+      source: "rules",
+      fallbackUsed: completion.fallbackUsed,
+      fallbackReason: "provider_error",
+      error: completion.error
+    });
     return rulesResult(draftAnswer, false, "provider_error");
   }
 
@@ -160,6 +208,13 @@ export async function createAdvisorAnswerWithAi(question: string, resources: Rad
       provider: config.provider,
       model: completion.model,
       fallbackUsed: completion.fallbackUsed
+    });
+    recordAiRuntimeStatus({
+      source: "rules",
+      model: completion.model,
+      fallbackUsed: completion.fallbackUsed,
+      fallbackReason: "invalid_model_output",
+      error: "AI output did not match the Advisor narrative schema."
     });
     return rulesResult(draftAnswer, false, "invalid_model_output");
   }
@@ -173,8 +228,21 @@ export async function createAdvisorAnswerWithAi(question: string, resources: Rad
       fallbackUsed: completion.fallbackUsed,
       errors: validation.errors
     });
+    recordAiRuntimeStatus({
+      source: "rules",
+      model: completion.model,
+      fallbackUsed: completion.fallbackUsed,
+      fallbackReason: "validation_failed",
+      error: validation.errors.join(" | ")
+    });
     return rulesResult(draftAnswer, false, "validation_failed");
   }
+
+  recordAiRuntimeStatus({
+    source: "ai",
+    model: completion.model,
+    fallbackUsed: completion.fallbackUsed
+  });
 
   return {
     answer,

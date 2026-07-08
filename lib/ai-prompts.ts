@@ -64,10 +64,21 @@ const sharedSystemPrompt = [
 const advisorOutputSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["question", "recommendation", "fitConditions", "reasons", "risks", "alternatives", "validationChecklist", "evidence"],
+  required: ["question", "recommendation", "decisionSummary", "fitConditions", "reasons", "risks", "alternatives", "validationChecklist", "evidence"],
   properties: {
     question: { type: "string" },
     recommendation: { type: "string" },
+    decisionSummary: {
+      type: "object",
+      additionalProperties: false,
+      required: ["recommendedFor", "notRecommendedFor", "migrationCost", "nextSteps"],
+      properties: {
+        recommendedFor: { type: "string" },
+        notRecommendedFor: { type: "array", items: { type: "string" }, minItems: 1 },
+        migrationCost: { type: "string", enum: ["low", "medium", "high", "unknown"] },
+        nextSteps: { type: "array", items: { type: "string" }, minItems: 1 }
+      }
+    },
     fitConditions: { type: "array", items: { type: "string" }, minItems: 1 },
     reasons: { type: "array", items: { type: "string" }, minItems: 1 },
     risks: { type: "array", items: { type: "string" }, minItems: 1 },

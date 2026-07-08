@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 interface AdvisorResponse {
   question: string;
   recommendation: string;
+  decisionSummary: {
+    recommendedFor: string;
+    notRecommendedFor: string[];
+    migrationCost: "low" | "medium" | "high" | "unknown";
+    nextSteps: string[];
+  };
   fitConditions: string[];
   reasons: string[];
   risks: string[];
@@ -20,6 +26,13 @@ interface AdvisorResponse {
   fallbackReason?: string | null;
   cached?: boolean;
 }
+
+const migrationCostLabels = {
+  low: "低",
+  medium: "中",
+  high: "高",
+  unknown: "待确认"
+} as const;
 
 export function AdvisorForm() {
   const [question, setQuestion] = useState("React 团队做电商小程序，后续可能上 H5，应该选 Taro 还是原生？");
@@ -89,6 +102,32 @@ export function AdvisorForm() {
               <p className="mt-1 text-lg font-bold">{answer.recommendation}</p>
               {answer.model ? <p className="mt-1 text-xs text-muted-foreground">Model: {answer.model}</p> : null}
               {answer.fallbackReason ? <p className="mt-1 text-xs text-muted-foreground">Fallback: {answer.fallbackReason}</p> : null}
+            </div>
+            <div className="grid gap-3 rounded-lg border border-border bg-muted p-3 sm:grid-cols-2">
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground">适合</h3>
+                <p className="mt-1 text-sm leading-6">{answer.decisionSummary.recommendedFor}</p>
+              </div>
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground">迁移成本</h3>
+                <p className="mt-1 text-sm font-semibold">{migrationCostLabels[answer.decisionSummary.migrationCost]}</p>
+              </div>
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground">不适合</h3>
+                <ul className="mt-1 space-y-1 text-sm leading-6">
+                  {answer.decisionSummary.notRecommendedFor.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground">下一步</h3>
+                <ul className="mt-1 space-y-1 text-sm leading-6">
+                  {answer.decisionSummary.nextSteps.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground">理由</h3>

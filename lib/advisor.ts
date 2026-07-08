@@ -1,8 +1,18 @@
 import type { RadarResource, ResourceType } from "@/lib/resources";
 
+export type AdvisorMigrationCost = "low" | "medium" | "high" | "unknown";
+
+export interface AdvisorDecisionSummary {
+  recommendedFor: string;
+  notRecommendedFor: string[];
+  migrationCost: AdvisorMigrationCost;
+  nextSteps: string[];
+}
+
 export interface AdvisorAnswer {
   question: string;
   recommendation: string;
+  decisionSummary: AdvisorDecisionSummary;
   fitConditions: string[];
   reasons: string[];
   risks: string[];
@@ -111,6 +121,19 @@ function recommendationFor(resource: RadarResource | undefined) {
   return `建议优先评估 ${title}。`;
 }
 
+function migrationCostFor(resource: RadarResource | undefined, question: string): AdvisorMigrationCost {
+  if (!resource) return "unknown";
+  if (/迁移|替换|从|老项目|已有项目/i.test(question)) {
+    if (resource.radar.riskLevel === "high" || resource.radar.status === "hold") return "high";
+    return "medium";
+  }
+  if (/原生|native/i.test(question) && /h5|多端|跨端/i.test(question)) return "high";
+  if (/react|taro|vue|uni-app/i.test(question)) return "medium";
+  if (resource.radar.status === "adopt" && resource.radar.riskLevel === "low") return "low";
+  if (resource.radar.status === "hold" || resource.radar.riskLevel === "high") return "high";
+  return "medium";
+}
+
 function fitConditionsFor(resource: RadarResource | undefined, question: string) {
   if (!resource) return ["资源库暂无可用候选，需要先补充资源和证据。"];
 
@@ -121,6 +144,44 @@ function fitConditionsFor(resource: RadarResource | undefined, question: string)
   if (/企业|生产|长期|团队/i.test(question)) conditions.push("企业项目应优先选择维护状态清晰、替代方案明确的资源。");
 
   return Array.from(new Set(conditions)).slice(0, 5);
+}
+
+function decisionSummaryFor({
+  primary,
+  question,
+  alternatives
+}: {
+  primary: RadarResource | undefined;
+  question: string;
+  alternatives: Array<{ title: string }>;
+}): AdvisorDecisionSummary {
+  if (!primary) {
+    return {
+      recommendedFor: "资源库暂无可用候选，先补充资源和证据后再做选型。",
+      notRecommendedFor: ["需要立即进入生产实施的项目。"],
+      migrationCost: "unknown",
+      nextSteps: ["补充候选资源、维护状态、风险证据和替代方案。"]
+    };
+  }
+
+  const title = cleanTitle(primary.title);
+  const nextSteps = [
+    `用 ${title} 做一个最小真实页面验证开发链路。`,
+    "检查维护状态、最近发布、issue 响应和微信基础能力适配。",
+    alternatives.length > 0 ? `用同一组需求对比 ${alternatives.map((item) => item.title).join("、")}。` : "补充至少一个同类替代方案用于对比。"
+  ];
+
+  return {
+    recommendedFor: primary.radar.status === "hold" ? `仅建议维护存量 ${title} 项目，不建议新项目优先采用。` : `${title} 更适合${primary.radar.useCases.slice(0, 2).join("、")}场景。`,
+    notRecommendedFor:
+      primary.radar.notRecommendedFor.length > 0
+        ? primary.radar.notRecommendedFor.slice(0, 3)
+        : primary.radar.status === "hold" || primary.radar.riskLevel === "high"
+          ? ["缺少迁移预案或长期维护要求明确的新项目。"]
+          : ["需要跳过原型验证、直接承诺长期技术路线的项目。"],
+    migrationCost: migrationCostFor(primary, question),
+    nextSteps
+  };
 }
 
 function alternativesFor(candidates: Array<{ resource: RadarResource; score: number }>, primary: RadarResource | undefined) {
@@ -176,6 +237,7 @@ export function createAdvisorAnswer(question: string, resources: RadarResource[]
   return {
     question,
     recommendation: recommendationFor(primary),
+    decisionSummary: decisionSummaryFor({ primary, question, alternatives }),
     fitConditions: fitConditionsFor(primary, question),
     reasons: primary
       ? [

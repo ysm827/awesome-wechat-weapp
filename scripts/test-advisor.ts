@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { POST as advisorRoute } from "@/app/api/advisor/route";
 import { createAdvisorAnswer } from "@/lib/advisor";
 import { validateAdvisorAnswer } from "@/lib/ai-output-validation";
+import { getAiRuntimeStatus } from "@/lib/ai-runtime-status";
 import { getResources } from "@/lib/resources";
 
 const originalEnv = {
@@ -74,6 +75,10 @@ try {
 
     assert.equal(validation.ok, true, validation.errors.join("\n"));
     assert.ok(answer.recommendation.length > 0, `${item.question} should include a recommendation`);
+    assert.ok(answer.decisionSummary.recommendedFor.length > 0, `${item.question} should include a decision summary`);
+    assert.ok(answer.decisionSummary.notRecommendedFor.length > 0, `${item.question} should include not recommended conditions`);
+    assert.ok(["low", "medium", "high", "unknown"].includes(answer.decisionSummary.migrationCost), `${item.question} should include a migration cost level`);
+    assert.ok(answer.decisionSummary.nextSteps.length > 0, `${item.question} should include next steps`);
     assert.ok(answer.fitConditions.length > 0, `${item.question} should include fit conditions`);
     assert.ok(answer.reasons.length > 0, `${item.question} should include reasons`);
     assert.ok(answer.risks.length > 0, `${item.question} should include risks`);
@@ -118,9 +123,12 @@ try {
   const routeValidation = validateAdvisorAnswer(routeAnswer, resources);
   assert.equal(routeValidation.ok, true, routeValidation.errors.join("\n"));
   assert.ok(routeAnswer.fitConditions.length > 0, "advisor route should return fit conditions");
+  assert.ok(routeAnswer.decisionSummary.nextSteps.length > 0, "advisor route should return decision next steps");
   assert.ok(routeAnswer.alternatives.length > 0, "advisor route should return alternatives");
   assert.ok(routeAnswer.validationChecklist.length > 0, "advisor route should return a validation checklist");
   assert.equal(routeAnswer.source, "rules", "advisor route should use rules when AI is not configured");
+  const unconfiguredRuntime = getAiRuntimeStatus();
+  assert.equal(unconfiguredRuntime.lastSource, "not_configured", "AI runtime should report unconfigured Advisor calls");
 
   setEnv("OPENAI_API_KEY", "test-openrouter-key");
   setEnv("OPENAI_API_URL", "https://openrouter.ai/api/v1");
@@ -183,6 +191,11 @@ try {
   assert.equal(aiRouteAnswer.fallbackUsed, false);
   assert.equal(aiRouteAnswer.fallbackReason, null);
   assert.match(aiRouteAnswer.recommendation, /^AI 增强建议：/);
+  assert.ok(aiRouteAnswer.decisionSummary.nextSteps.length > 0, "AI advisor route should preserve decision next steps");
+  const aiRuntime = getAiRuntimeStatus();
+  assert.equal(aiRuntime.lastSource, "ai");
+  assert.equal(aiRuntime.lastModel, "test-primary-model");
+  assert.equal(aiRuntime.fallbackUsed, false);
   assert.equal(aiRequestCount, 1, "advisor route should call the AI provider once for a valid primary response");
   globalThis.fetch = originalFetch;
 
@@ -249,6 +262,11 @@ try {
   assert.equal(fallbackRouteAnswer.fallbackUsed, true);
   assert.equal(fallbackRouteAnswer.fallbackReason, null);
   assert.match(fallbackRouteAnswer.recommendation, /^Fallback AI 建议：/);
+  assert.ok(fallbackRouteAnswer.decisionSummary.nextSteps.length > 0, "fallback advisor route should preserve decision next steps");
+  const fallbackRuntime = getAiRuntimeStatus();
+  assert.equal(fallbackRuntime.lastSource, "ai");
+  assert.equal(fallbackRuntime.lastModel, "qwen/qwen3-next-80b-a3b-instruct:free");
+  assert.equal(fallbackRuntime.fallbackUsed, true);
   assert.deepEqual(requestedModels, ["test-primary-model", "qwen/qwen3-next-80b-a3b-instruct:free"], "advisor route should try primary then fallback model");
   globalThis.fetch = originalFetch;
 
@@ -260,6 +278,7 @@ try {
         assertions: [
           "advisor generation",
           "advisor decision structure",
+          "advisor decision summary",
           "advisor internal resource links",
           "advisor evidence validation",
           "advisor route validation",

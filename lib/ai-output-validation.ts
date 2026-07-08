@@ -63,6 +63,18 @@ export function validateAdvisorAnswer(answer: AdvisorAnswer, resources: RadarRes
 
   if (!answer.question.trim()) errors.push("advisor question is required.");
   if (!answer.recommendation.trim()) errors.push("advisor recommendation is required.");
+  if (!answer.decisionSummary || typeof answer.decisionSummary !== "object") {
+    errors.push("advisor decision summary is required.");
+  } else {
+    if (typeof answer.decisionSummary.recommendedFor !== "string" || !answer.decisionSummary.recommendedFor.trim()) errors.push("advisor decision summary requires a recommendedFor statement.");
+    if (!["low", "medium", "high", "unknown"].includes(answer.decisionSummary.migrationCost)) errors.push("advisor decision summary has an invalid migration cost.");
+    if (!Array.isArray(answer.decisionSummary.notRecommendedFor) || answer.decisionSummary.notRecommendedFor.length === 0) {
+      errors.push("advisor decision summary requires at least one notRecommendedFor item.");
+    }
+    if (!Array.isArray(answer.decisionSummary.nextSteps) || answer.decisionSummary.nextSteps.length === 0) {
+      errors.push("advisor decision summary requires at least one next step.");
+    }
+  }
   if (answer.reasons.length === 0) errors.push("advisor answer requires at least one reason.");
   if (answer.risks.length === 0) errors.push("advisor answer requires at least one risk.");
   if (answer.evidence.length === 0) errors.push("advisor answer requires at least one evidence item.");
