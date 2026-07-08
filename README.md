@@ -131,8 +131,8 @@ npm run smoke
 - `GITHUB_TOKEN`：可选，提高 GitHub 采集额度。
 - `OPENAI_API_KEY`：可选，用于真实 AI Advisor；未配置或模型输出校验失败时使用规则建议。可使用 OpenRouter API key。
 - `OPENAI_API_URL`：可选，OpenAI-compatible endpoint，默认 `https://api.openai.com/v1`；使用 OpenRouter 时配置为 `https://openrouter.ai/api/v1`。
-- `OPENAI_MODEL`：可选，主模型，默认 `nvidia/nemotron-3-ultra-550b-a55b:free`。
-- `OPENAI_FALLBACK_MODEL`：可选，备用模型，默认 `qwen/qwen3-next-80b-a3b-instruct:free`。
+- `OPENAI_MODEL`：可选，主模型，默认 `openai/gpt-oss-20b:free`。
+- `OPENAI_FALLBACK_MODEL`：可选，备用模型，默认 `nvidia/nemotron-nano-9b-v2:free`。
 - `BLOB_READ_WRITE_TOKEN`：可选，用于上传周报快照、资源导出快照和 Doctor 报告。
 - `UPSTASH_REDIS_REST_URL`、`UPSTASH_REDIS_REST_TOKEN` 或 Vercel Marketplace 自动注入的 `KV_REST_API_URL`、`KV_REST_API_TOKEN`：可选，配置后用于 Advisor 缓存和分布式限流；未配置时使用内存限流兜底。
 - `OPERATION_LOG_RETENTION_DAYS`：可选，运行日志保留天数，默认 30 天。

@@ -1,7 +1,7 @@
 export const DEFAULT_OPENAI_API_URL = "https://api.openai.com/v1";
 export const OPENROUTER_API_URL = "https://openrouter.ai/api/v1";
-export const DEFAULT_OPENAI_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
-export const DEFAULT_OPENAI_FALLBACK_MODEL = "qwen/qwen3-next-80b-a3b-instruct:free";
+export const DEFAULT_OPENAI_MODEL = "openai/gpt-oss-20b:free";
+export const DEFAULT_OPENAI_FALLBACK_MODEL = "nvidia/nemotron-nano-9b-v2:free";
 
 export type AiProvider = "openai" | "openrouter" | "custom";
 

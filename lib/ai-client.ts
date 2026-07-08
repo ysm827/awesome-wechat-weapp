@@ -18,7 +18,7 @@ interface ChatCompletionResponse {
   error?: unknown;
 }
 
-const DEFAULT_AI_TIMEOUT_MS = 8_000;
+const DEFAULT_AI_TIMEOUT_MS = 20_000;
 const DEFAULT_AI_MAX_TOKENS = 1400;
 const OPENROUTER_JSON_RESPONSE_FORMAT_MODELS = new Set([
   "google/gemma-4-26b-a4b-it:free",
