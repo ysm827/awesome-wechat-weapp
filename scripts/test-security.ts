@@ -54,7 +54,7 @@ try {
         headers: { "x-vercel-cron": "1" }
       })
     ),
-    true
+    false
   );
   assert.equal(isCronAuthorized(new Request("https://example.com/api/cron/enrich")), false);
 
@@ -126,7 +126,7 @@ try {
         checkedAt: new Date().toISOString(),
         cases: [
           "cron secret",
-          "vercel cron fallback",
+          "cron secret required in production",
           "admin token",
           "client ip",
           "memory rate limit"

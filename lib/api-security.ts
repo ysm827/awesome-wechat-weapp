@@ -14,7 +14,5 @@ export function isCronAuthorized(request: Request) {
     return authorization === `Bearer ${secret}` || querySecret === secret;
   }
 
-  if (process.env.NODE_ENV !== "production") return true;
-
-  return request.headers.get("x-vercel-cron") === "1" || request.headers.get("user-agent")?.toLowerCase().includes("vercel-cron") === true;
+  return process.env.NODE_ENV !== "production";
 }
